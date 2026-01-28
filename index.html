@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JourneyAPP v21</title>
+    <title>JourneyAPP v22</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
@@ -27,9 +27,9 @@
 
     <div id="loading-overlay">
         <div id="login-box" class="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
-            <div class="mb-4 text-5xl">🚍</div>
+            <div class="mb-4 text-5xl">🚗</div>
             <h2 class="text-2xl font-black mb-2 text-indigo-900">JourneyAPP</h2>
-            <p class="text-xs text-slate-500 mb-6">v21.0 預算整合版</p>
+            <p class="text-xs text-slate-500 mb-6">v22.0 租車連動版</p>
             <input type="password" id="secret-password" placeholder="輸入密碼..." class="w-full border-2 border-slate-200 rounded-xl p-3 text-lg font-bold mb-4 focus:border-indigo-500 outline-none text-center">
             <button onclick="initCloudSync()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
                 <i class="fas fa-unlock-alt mr-2"></i>解鎖同步
@@ -48,7 +48,7 @@
                 <h1 id="app-main-title" onclick="editAppTitle()" class="text-lg font-black italic tracking-wider" title="點擊修改標題">SHIKOKU 2026</h1>
                 <p id="cloud-status" class="text-slate-400 text-[10px] mt-1 flex items-center gap-1"><i class="fas fa-wifi"></i> 等待連線...</p>
             </div>
-            <div class="text-[10px] font-bold border border-slate-600 px-2 py-1 rounded bg-slate-800">v21.0</div>
+            <div class="text-[10px] font-bold border border-slate-600 px-2 py-1 rounded bg-slate-800">v22.0</div>
         </div>
         <div class="flex space-x-1 bg-slate-800 p-1 rounded-lg">
             <button onclick="switchTab('itinerary')" id="tab-itinerary" class="flex-1 py-2 text-sm font-bold rounded bg-white text-slate-900 shadow-sm transition-all">行程</button>
@@ -81,17 +81,27 @@
             </div>
             <div id="member-tags-finance" class="flex flex-wrap gap-2"></div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="bg-slate-50 p-4 border-b flex justify-between items-center cursor-pointer" onclick="document.getElementById('car-details').classList.toggle('hidden')">
-                <div class="flex items-center"><i class="fas fa-car-side text-indigo-600 mr-2"></i><span class="font-bold text-sm">Toyota Rent-A-Car</span></div>
-                <div class="text-right"><span class="font-black text-indigo-600 text-sm block">¥137,679</span></div>
+        
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-all" onclick="openCarRentalModal()">
+            <div class="bg-indigo-50 p-4 border-b border-indigo-100 flex justify-between items-center">
+                <div class="flex items-center"><i class="fas fa-car text-indigo-600 mr-2 text-xl"></i><span class="font-bold text-slate-800">Toyota Rent-A-Car</span></div>
+                <div class="text-right">
+                    <span id="car-total-display" class="font-black text-indigo-600 text-lg block">¥0</span>
+                    <span class="text-[10px] text-indigo-400"><i class="fas fa-pen mr-1"></i>編輯資訊</span>
+                </div>
             </div>
-            <div id="car-details" class="p-4 text-xs space-y-2 hidden border-t">
-                <p><b>預約號碼:</b> 99991680900 (W1 Class)</p>
-                <p><b>取車:</b> 04/29 14:30 新大阪駅前店</p>
-                <p><b>還車:</b> 05/10 20:00 新大阪駅前店</p>
+            <div class="p-4 text-xs space-y-2 text-slate-600">
+                <div class="flex justify-between border-b border-dashed border-slate-200 pb-2">
+                    <span><i class="fas fa-hashtag mr-1 text-slate-400"></i>預約號碼</span>
+                    <span id="car-res-no" class="font-bold"></span>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><span class="block text-slate-400 text-[10px]">取車</span><span id="car-pickup" class="font-bold"></span></div>
+                    <div><span class="block text-slate-400 text-[10px]">還車</span><span id="car-dropoff" class="font-bold"></span></div>
+                </div>
             </div>
         </div>
+
         <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
             <div class="p-3 bg-orange-50 border-b border-orange-100 flex justify-between items-center">
                 <span class="font-bold text-orange-800 text-sm"><i class="fas fa-hotel mr-2"></i>住宿預算</span>
@@ -102,16 +112,18 @@
             </div>
             <div class="overflow-x-auto"><table class="w-full text-left budget-table whitespace-nowrap"><thead class="bg-orange-100 text-orange-800"><tr><th>日期/飯店</th><th class="text-center">分攤</th><th class="text-right">每人</th><th class="text-right">總價</th><th></th></tr></thead><tbody id="hotel-list-body"></tbody></table></div>
         </div>
+        
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="p-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                 <span class="font-bold text-slate-700 text-sm"><i class="fas fa-bus mr-2"></i>其餘預算</span>
                 <div>
                     <span id="other-total" class="text-xs bg-white text-slate-600 px-2 py-1 rounded shadow-sm mr-2 font-bold">¥0</span>
-                    <button onclick="openOtherBudgetModal('add')" class="text-xs bg-slate-600 text-white px-2 py-1 rounded shadow hover:bg-slate-700"><i class="fas fa-plus"></i></button>
+                    <button onclick="openOtherBudgetModal('add')" class="text-xs bg-slate-600 text-white px-2 py-1 rounded shadow"><i class="fas fa-plus"></i></button>
                 </div>
             </div>
             <div class="overflow-x-auto"><table class="w-full text-left budget-table whitespace-nowrap"><thead class="bg-slate-100 text-slate-600"><tr><th>項目</th><th class="text-center">分攤</th><th class="text-right">每人</th><th class="text-right">總價</th><th></th></tr></thead><tbody id="other-expense-body"></tbody></table></div>
         </div>
+        
         <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-indigo-500">
             <h2 class="font-bold text-sm text-slate-700 mb-3"><i class="fas fa-chart-pie mr-2 text-indigo-500"></i>個人預估總支出</h2>
             <div id="budget-summary-list" class="space-y-2"></div>
@@ -136,6 +148,22 @@
             </button>
         </div>
     </main>
+
+    <div id="car-rental-modal" class="fixed inset-0 bg-slate-900/80 z-[80] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl p-5 m-4">
+            <h3 class="font-bold text-lg mb-4 text-indigo-800"><i class="fas fa-car mr-2"></i>編輯租車資訊</h3>
+            <div class="space-y-3">
+                <div><label class="text-[10px] font-bold text-slate-400">總金額 (同步至其餘預算)</label><input type="number" id="car-input-price" class="w-full bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-lg font-black text-indigo-600 mt-1"></div>
+                <div><label class="text-[10px] font-bold text-slate-400">預約號碼</label><input type="text" id="car-input-res" class="w-full bg-slate-50 border rounded-lg p-2 text-sm mt-1"></div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-[10px] font-bold text-slate-400">取車時間/地點</label><input type="text" id="car-input-pickup" class="w-full bg-slate-50 border rounded-lg p-2 text-sm mt-1"></div>
+                    <div><label class="text-[10px] font-bold text-slate-400">還車時間/地點</label><input type="text" id="car-input-dropoff" class="w-full bg-slate-50 border rounded-lg p-2 text-sm mt-1"></div>
+                </div>
+                <button onclick="saveCarRental()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold shadow-lg mt-2">儲存並同步</button>
+                <button onclick="document.getElementById('car-rental-modal').classList.add('hidden')" class="w-full bg-slate-100 text-slate-500 py-3 rounded-lg font-bold">取消</button>
+            </div>
+        </div>
+    </div>
 
     <div id="hotel-modal" class="fixed inset-0 bg-slate-900/80 z-[80] hidden flex items-end sm:items-center justify-center backdrop-blur-sm">
         <div class="bg-white w-full max-w-md sm:rounded-2xl rounded-t-2xl overflow-hidden shadow-2xl p-5">
@@ -262,8 +290,9 @@
             {date:"5/9", name:"東横INN 神戶", price:31680, url:"https://travel.rakuten.co.jp/HOTEL/108407/108407.html", splitMembers: []}
         ],
         otherExpenses: [
-            { title: "Toyota Rent-A-Car", amount: 137679, splitMembers: [] }
+            { title: "Toyota Rent-A-Car", amount: 137679, splitMembers: [], isCarRental: true }
         ],
+        carRentalInfo: { resNo: "99991680900", pickup: "04/29 14:30 新大阪駅前", dropoff: "05/10 20:00 新大阪駅前" },
         fixedExpenses: [],
         members: [], expenses: []
     };
@@ -284,7 +313,12 @@
             appData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
             if (!appData.hotels) appData.hotels = defaultData.hotels;
             if (!appData.otherExpenses) appData.otherExpenses = defaultData.otherExpenses;
+            if (!appData.carRentalInfo) appData.carRentalInfo = defaultData.carRentalInfo;
             if (!appData.fixedExpenses) appData.fixedExpenses = [];
+            // 標記預設租車項目
+            const carIdx = appData.otherExpenses.findIndex(o => o.title.includes("Rent-A-Car"));
+            if(carIdx !== -1) appData.otherExpenses[carIdx].isCarRental = true;
+            
             updateStatus("同步完成"); closeOverlay(); renderAll();
         } catch (e) { document.getElementById('loading-spinner').classList.add('hidden'); document.getElementById('login-box').classList.remove('hidden'); showLoginMsg("密碼錯誤"); }
     }
@@ -421,6 +455,8 @@
         if(currentEditType === 'hotel') appData.hotels[currentEditIdx].splitMembers = selected; else appData.otherExpenses[currentEditIdx].splitMembers = selected;
         document.getElementById('member-select-modal').classList.add('hidden'); renderFinancePage(); saveToCloud();
     }
+    
+    // 住宿與租車
     function renderHotelTable(){
         let total = 0;
         document.getElementById('hotel-list-body').innerHTML=appData.hotels.map((h, idx) => {
@@ -433,7 +469,6 @@
         document.getElementById('hotel-total').innerText = '¥' + total.toLocaleString();
     }
     
-    // 住宿 Modal
     function openHotelModal() {
         document.getElementById('hotel-input-date').valueAsDate = new Date();
         document.getElementById('hotel-input-name').value = '';
@@ -453,66 +488,57 @@
     function deleteHotel(idx) { if(confirm("刪除?")) { appData.hotels.splice(idx, 1); renderFinancePage(); saveToCloud(); }}
     function editHotel(idx, field) { if(field === 'date') { const v = prompt("修改日期:", appData.hotels[idx].date); if(v) appData.hotels[idx].date = v; } if(field === 'price') { const v = parseInt(prompt("修改總金額:", appData.hotels[idx].price)); if(!isNaN(v)) appData.hotels[idx].price = v; } renderFinancePage(); saveToCloud(); }
     
-    // 其餘預算 (v21: 整合 Modal)
-    let editingOtherBudgetIdx = null; 
-    function openOtherBudgetModal(mode, idx = null) {
-        const modal = document.getElementById('other-budget-modal');
-        const titleEl = document.getElementById('other-budget-title');
-        const nameInput = document.getElementById('ob-title');
-        const amtInput = document.getElementById('ob-amount');
-        const splitContainer = document.getElementById('ob-split-container');
+    // v22: 租車 Modal 與邏輯
+    function openCarRentalModal() {
+        // 載入當前資料
+        const info = appData.carRentalInfo;
+        const carExpense = appData.otherExpenses.find(o => o.isCarRental);
         
-        // 渲染分攤勾選框
-        let currentSelected = [];
-        if (mode === 'edit') currentSelected = appData.otherExpenses[idx].splitMembers || [];
-        else if (mode === 'add') currentSelected = appData.members; // 預設全選
-
-        splitContainer.innerHTML = appData.members.map(m => `
-            <label class="flex items-center space-x-2 bg-slate-50 p-2 rounded cursor-pointer border border-slate-200">
-                <input type="checkbox" value="${m}" ${currentSelected.includes(m) ? 'checked' : ''} class="ob-split-cb accent-indigo-600">
-                <span class="text-xs font-bold text-slate-700">${m}</span>
-            </label>`).join('');
-
-        if (mode === 'add') {
-            editingOtherBudgetIdx = null;
-            titleEl.innerText = "新增預算項目";
-            nameInput.value = '';
-            amtInput.value = '';
-        } else if (mode === 'edit') {
-            editingOtherBudgetIdx = idx;
-            titleEl.innerText = "修改預算項目";
-            nameInput.value = appData.otherExpenses[idx].title;
-            amtInput.value = appData.otherExpenses[idx].amount;
-        }
-        modal.classList.remove('hidden');
-    }
-
-    function toggleOtherBudgetSplit() {
-        const checks = document.querySelectorAll('.ob-split-cb');
-        const allChecked = Array.from(checks).every(x => x.checked);
-        checks.forEach(x => x.checked = !allChecked);
-    }
-
-    function saveOtherBudget() {
-        const t = document.getElementById('ob-title').value;
-        const a = parseInt(document.getElementById('ob-amount').value);
-        if(!t || isNaN(a)) return alert("請填寫完整");
+        document.getElementById('car-input-res').value = info.resNo || '';
+        document.getElementById('car-input-pickup').value = info.pickup || '';
+        document.getElementById('car-input-dropoff').value = info.dropoff || '';
         
-        const selectedMembers = Array.from(document.querySelectorAll('.ob-split-cb:checked')).map(cb => cb.value);
-
-        if (editingOtherBudgetIdx !== null) {
-            appData.otherExpenses[editingOtherBudgetIdx].title = t;
-            appData.otherExpenses[editingOtherBudgetIdx].amount = a;
-            appData.otherExpenses[editingOtherBudgetIdx].splitMembers = selectedMembers;
+        // 嘗試抓取對應的 expense 金額
+        if (carExpense) {
+            document.getElementById('car-input-price').value = carExpense.amount;
         } else {
-            appData.otherExpenses.push({title:t, amount:a, splitMembers: selectedMembers});
+            document.getElementById('car-input-price').value = 0;
         }
         
-        document.getElementById('other-budget-modal').classList.add('hidden');
-        renderFinancePage();
-        saveToCloud();
+        document.getElementById('car-rental-modal').classList.remove('hidden');
+    }
+    
+    function saveCarRental() {
+        const price = parseInt(document.getElementById('car-input-price').value);
+        if(isNaN(price)) return alert("金額錯誤");
+        
+        appData.carRentalInfo.resNo = document.getElementById('car-input-res').value;
+        appData.carRentalInfo.pickup = document.getElementById('car-input-pickup').value;
+        appData.carRentalInfo.dropoff = document.getElementById('car-input-dropoff').value;
+        
+        // 更新或建立 expense item
+        const carIdx = appData.otherExpenses.findIndex(o => o.isCarRental);
+        if (carIdx !== -1) {
+            appData.otherExpenses[carIdx].amount = price;
+        } else {
+            // 如果被誤刪，自動重建
+            appData.otherExpenses.unshift({ title: "Toyota Rent-A-Car", amount: price, splitMembers: [], isCarRental: true });
+        }
+        
+        document.getElementById('car-rental-modal').classList.add('hidden');
+        renderFinancePage(); saveToCloud();
+    }
+    
+    function renderCarRentalCard() {
+        const info = appData.carRentalInfo || {};
+        const carExpense = appData.otherExpenses.find(o => o.isCarRental) || { amount: 0 };
+        document.getElementById('car-res-no').innerText = info.resNo || '未設定';
+        document.getElementById('car-pickup').innerText = info.pickup || '未設定';
+        document.getElementById('car-dropoff').innerText = info.dropoff || '未設定';
+        document.getElementById('car-total-display').innerText = '¥' + carExpense.amount.toLocaleString();
     }
 
+    // 其餘預算
     function renderOtherExpenseTable() {
         let total = 0;
         document.getElementById('other-expense-body').innerHTML = appData.otherExpenses.map((item, idx) => {
@@ -521,26 +547,45 @@
             const perPerson = splitCount > 0 ? Math.round(item.amount / splitCount) : 0;
             let splitDisplay = splitCount > 0 ? `<span class="text-[10px] bg-slate-100 text-slate-600 px-1 rounded">${splitCount}人分</span>` : `<span class="text-[10px] text-red-400">未設定</span>`;
             
-            // v21: 點擊整列開啟編輯
+            // 如果是租車項目，鎖定只能透過上方卡片編輯金額 (避免衝突)
+            const clickAction = item.isCarRental ? "alert('請點擊上方的租車卡片進行編輯')" : `openOtherBudgetModal('edit', ${idx})`;
+            const deleteAction = item.isCarRental ? "alert('租車項目請勿刪除')" : `deleteOther(${idx})`;
+            const itemStyle = item.isCarRental ? "bg-indigo-50/50" : "";
+
             return `
-            <tr class="border-b border-slate-100 group cursor-pointer hover:bg-slate-50" onclick="openOtherBudgetModal('edit', ${idx})">
+            <tr class="border-b border-slate-100 group cursor-pointer hover:bg-slate-50 ${itemStyle}" onclick="${clickAction}">
                 <td class="p-2"><div class="font-bold text-slate-700 text-xs">${item.title}</div></td>
-                <td class="p-2 text-center">
-                    ${splitDisplay}
-                    <div class="text-[8px] text-slate-400 truncate max-w-[60px]">${item.splitMembers ? item.splitMembers.join(',') : ''}</div>
-                </td>
+                <td class="p-2 text-center" onclick="event.stopPropagation(); openMemberSelectModal('other', ${idx})">${splitDisplay}<div class="text-[8px] text-slate-400 truncate max-w-[60px]">${item.splitMembers ? item.splitMembers.join(',') : ''}</div></td>
                 <td class="p-2 text-right font-mono text-slate-500 text-[10px]">¥${perPerson.toLocaleString()}</td>
                 <td class="p-2 text-right font-mono font-bold text-slate-700">¥${item.amount.toLocaleString()}</td>
                 <td class="p-2 text-right">
-                    <button onclick="event.stopPropagation(); deleteOther(${idx})" class="text-slate-300 hover:text-red-500 text-xs"><i class="fas fa-trash"></i></button>
+                    <button onclick="event.stopPropagation(); ${deleteAction}" class="text-slate-300 hover:text-red-500 text-xs"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`;
         }).join('');
         document.getElementById('other-total').innerText = '¥' + total.toLocaleString();
     }
     
+    // ... 其餘預算 Modal 邏輯 (同 v21)
+    let editingOtherBudgetIdx = null; 
+    function openOtherBudgetModal(mode, idx = null) {
+        const modal = document.getElementById('other-budget-modal'); const titleEl = document.getElementById('other-budget-title'); const nameInput = document.getElementById('ob-title'); const amtInput = document.getElementById('ob-amount'); const splitContainer = document.getElementById('ob-split-container');
+        let currentSelected = []; if (mode === 'edit') currentSelected = appData.otherExpenses[idx].splitMembers || []; else if (mode === 'add') currentSelected = appData.members; 
+        splitContainer.innerHTML = appData.members.map(m => `<label class="flex items-center space-x-2 bg-slate-50 p-2 rounded cursor-pointer border border-slate-200"><input type="checkbox" value="${m}" ${currentSelected.includes(m) ? 'checked' : ''} class="ob-split-cb accent-indigo-600"><span class="text-xs font-bold text-slate-700">${m}</span></label>`).join('');
+        if (mode === 'add') { editingOtherBudgetIdx = null; titleEl.innerText = "新增預算項目"; nameInput.value = ''; amtInput.value = ''; } 
+        else if (mode === 'edit') { editingOtherBudgetIdx = idx; titleEl.innerText = "修改預算項目"; nameInput.value = appData.otherExpenses[idx].title; amtInput.value = appData.otherExpenses[idx].amount; }
+        modal.classList.remove('hidden');
+    }
+    function toggleOtherBudgetSplit() { const checks = document.querySelectorAll('.ob-split-cb'); const allChecked = Array.from(checks).every(x => x.checked); checks.forEach(x => x.checked = !allChecked); }
+    function saveOtherBudget() {
+        const t = document.getElementById('ob-title').value; const a = parseInt(document.getElementById('ob-amount').value); if(!t || isNaN(a)) return alert("請填寫完整");
+        const selectedMembers = Array.from(document.querySelectorAll('.ob-split-cb:checked')).map(cb => cb.value);
+        if (editingOtherBudgetIdx !== null) { appData.otherExpenses[editingOtherBudgetIdx].title = t; appData.otherExpenses[editingOtherBudgetIdx].amount = a; appData.otherExpenses[editingOtherBudgetIdx].splitMembers = selectedMembers; } 
+        else { appData.otherExpenses.push({title:t, amount:a, splitMembers: selectedMembers}); }
+        document.getElementById('other-budget-modal').classList.add('hidden'); renderFinancePage(); saveToCloud();
+    }
     function deleteOther(idx) { if(confirm("刪除?")) { appData.otherExpenses.splice(idx, 1); renderFinancePage(); saveToCloud(); }}
-    
+
     function renderBudgetSummary() {
         if(appData.members.length === 0) return;
         let summary = {}; appData.members.forEach(m => summary[m] = 0);
@@ -548,12 +593,11 @@
         appData.otherExpenses.forEach(o => { if(o.splitMembers && o.splitMembers.length > 0) { const perPerson = o.amount / o.splitMembers.length; o.splitMembers.forEach(m => { if(summary[m] !== undefined) summary[m] += perPerson; }); }});
         document.getElementById('budget-summary-list').innerHTML = Object.keys(summary).map(m => `<div class="flex justify-between items-center bg-indigo-50 p-2 rounded border border-indigo-100"><span class="font-bold text-sm text-indigo-900">${m}</span><span class="font-mono font-black text-indigo-600">¥${Math.round(summary[m]).toLocaleString()}</span></div>`).join('');
     }
-    function renderFinancePage() { renderMembers(); renderHotelTable(); renderOtherExpenseTable(); renderBudgetSummary(); }
-    function addFixedExpense() { const t = prompt("項目名稱:"); if(!t) return; const a = parseInt(prompt("金額:")); if(isNaN(a)) return; appData.fixedExpenses.push({title:t, amount:a}); renderFixedBudget(); saveToCloud(); }
     
+    function renderFinancePage() { renderMembers(); renderCarRentalCard(); renderHotelTable(); renderOtherExpenseTable(); renderBudgetSummary(); }
+
     // 記帳邏輯
     let editingExpenseIdx = null; 
-
     function renderLedgerUI(){ calculateSettlement(); }
     function renderLedgerTable(){
         const con=document.getElementById('expense-container'); if(appData.expenses.length===0){con.innerHTML=`<div class="text-center text-slate-300 py-10">尚無紀錄</div>`;return;}
@@ -569,28 +613,13 @@
         if(appData.members.length<2)return alert("請先在【預算】頁面新增人員");
         const modal = document.getElementById('expense-modal');
         const delBtn = document.getElementById('expense-delete-btn');
-        
         document.getElementById('input-payer').innerHTML=appData.members.map(m=>`<option value="${m}">${m}</option>`).join('');
         document.getElementById('input-split-container').innerHTML=appData.members.map(m=>`<label class="flex items-center bg-slate-50 p-2 rounded border cursor-pointer"><input type="checkbox" value="${m}" checked class="accent-indigo-600 split-check mr-2"><span class="text-xs">${m}</span></label>`).join('');
-
-        if (mode === 'add') {
-            editingExpenseIdx = null;
-            document.getElementById('expense-modal-title').innerText = "新增消費";
-            delBtn.classList.add('hidden');
-            document.getElementById('input-date').valueAsDate=new Date(); 
-            document.getElementById('input-desc').value='';
-            document.getElementById('input-amount').value='';
-        } else if (mode === 'edit') {
-            editingExpenseIdx = idx;
-            document.getElementById('expense-modal-title').innerText = "編輯消費";
-            delBtn.classList.remove('hidden');
-            const exp = appData.expenses[idx];
-            document.getElementById('input-date').value = getYearForInput(exp.date);
-            document.getElementById('input-desc').value = exp.desc;
-            document.getElementById('input-amount').value = exp.amount;
-            document.getElementById('input-payer').value = exp.payer;
-            const checkboxes = document.querySelectorAll('.split-check');
-            checkboxes.forEach(cb => { cb.checked = exp.splitWith.includes(cb.value); });
+        if (mode === 'add') { editingExpenseIdx = null; document.getElementById('expense-modal-title').innerText = "新增消費"; delBtn.classList.add('hidden'); document.getElementById('input-date').valueAsDate=new Date(); document.getElementById('input-desc').value=''; document.getElementById('input-amount').value=''; } 
+        else if (mode === 'edit') {
+            editingExpenseIdx = idx; document.getElementById('expense-modal-title').innerText = "編輯消費"; delBtn.classList.remove('hidden');
+            const exp = appData.expenses[idx]; document.getElementById('input-date').value = getYearForInput(exp.date); document.getElementById('input-desc').value = exp.desc; document.getElementById('input-amount').value = exp.amount; document.getElementById('input-payer').value = exp.payer;
+            const checkboxes = document.querySelectorAll('.split-check'); checkboxes.forEach(cb => { cb.checked = exp.splitWith.includes(cb.value); });
         }
         modal.classList.remove('hidden');
     }
@@ -599,24 +628,13 @@
         const dr=document.getElementById('input-date').value; const desc=document.getElementById('input-desc').value; const amt=parseInt(document.getElementById('input-amount').value); const payer=document.getElementById('input-payer').value;
         const sw=Array.from(document.querySelectorAll('.split-check:checked')).map(c=>c.value);
         if(!dr||isNaN(amt)||amt<=0||sw.length===0)return alert("請填寫完整");
-        
         const d=new Date(dr); const ds=`${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
         const newExpense = {date:ds,desc,amount:amt,payer,splitWith:sw};
-
-        if (editingExpenseIdx !== null) { appData.expenses[editingExpenseIdx] = newExpense; } 
-        else { appData.expenses.push(newExpense); }
-        
+        if (editingExpenseIdx !== null) { appData.expenses[editingExpenseIdx] = newExpense; } else { appData.expenses.push(newExpense); }
         document.getElementById('expense-modal').classList.add('hidden'); renderLedgerTable();calculateSettlement();saveToCloud();
     }
     
-    function deleteExpenseFromModal() {
-        if(editingExpenseIdx !== null && confirm("確定刪除此筆消費？")) {
-            appData.expenses.splice(editingExpenseIdx, 1);
-            document.getElementById('expense-modal').classList.add('hidden');
-            renderLedgerTable(); calculateSettlement(); saveToCloud();
-        }
-    }
-
+    function deleteExpenseFromModal() { if(editingExpenseIdx !== null && confirm("確定刪除此筆消費？")) { appData.expenses.splice(editingExpenseIdx, 1); document.getElementById('expense-modal').classList.add('hidden'); renderLedgerTable(); calculateSettlement(); saveToCloud(); } }
     function delExp(i){if(confirm("刪除?")){appData.expenses.splice(i,1);renderLedgerTable();calculateSettlement();saveToCloud();}}
     
     function calculateSettlement(){
