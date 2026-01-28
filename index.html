@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四國冒險 v11.0 (雲端加密版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+    <style>
+        .draggable-item { user-select: none; transition: all 0.2s; cursor: grab; }
+        .draggable-item:active { cursor: grabbing; transform: scale(1.01); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .dragging { opacity: 0.5; border: 2px dashed #4f46e5; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .editable:hover { background-color: #f0f9ff; color: #0284c7; cursor: pointer; border-radius: 4px; padding: 0 4px;}
+        
+        /* 讀取遮罩 */
+        #loading-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); z-index: 100; display: flex; justify-content: center; align-items: center; flex-direction: column; color: white; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-900 pb-32 overflow-y-scroll">
+
+    <div id="loading-overlay">
+        <div id="login-box" class="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
+            <h2 class="text-2xl font-black mb-4 text-indigo-900">🔒 行程加密系統</h2>
+            <p class="text-sm text-slate-500 mb-4">請輸入團隊共用密碼以解密雲端資料</p>
+            <input type="password" id="secret-password" placeholder="輸入密碼..." class="w-full border-2 border-slate-200 rounded-xl p-3 text-lg font-bold mb-4 focus:border-indigo-500 outline-none text-center">
+            <button onclick="initCloudSync()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-all shadow-lg">
+                <i class="fas fa-unlock-alt mr-2"></i>解鎖並同步
+            </button>
+            <div id="login-msg" class="mt-4 text-red-500 text-xs font-bold h-4"></div>
+        </div>
+        <div id="loading-spinner" class="hidden text-center">
+            <i class="fas fa-circle-notch fa-spin text-5xl text-indigo-400 mb-4"></i>
+            <p class="font-bold tracking-widest animate-pulse">正在從雲端下載並解密...</p>
+        </div>
+    </div>
+
+    <header class="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-md">
+        <div class="flex justify-between items-center mb-2">
+            <div>
+                <h1 class="text-lg font-black italic tracking-wider">SHIKOKU 2026</h1>
+                <p id="cloud-status" class="text-slate-400 text-[10px] mt-1 flex items-center gap-1">
+                    <i class="fas fa-wifi"></i> 等待連線...
+                </p>
+            </div>
+            <div class="text-[10px] font-bold border border-slate-600 px-2 py-1 rounded bg-slate-800">V11.0 Cloud</div>
+        </div>
+        <div class="flex space-x-1 bg-slate-800 p-1 rounded-lg">
+            <button onclick="switchTab('itinerary')" id="tab-itinerary" class="flex-1 py-2 text-sm font-bold rounded bg-white text-slate-900 shadow-sm transition-all">行程</button>
+            <button onclick="switchTab('finance')" id="tab-finance" class="flex-1 py-2 text-sm font-bold rounded text-slate-400 hover:bg-slate-700 hover:text-white transition-all">預算</button>
+            <button onclick="switchTab('ledger')" id="tab-ledger" class="flex-1 py-2 text-sm font-bold rounded text-slate-400 hover:bg-slate-700 hover:text-white transition-all">記帳</button>
+        </div>
+    </header>
+
+    <main id="itinerary-page" class="tab-content active px-4 py-6">
+        <div class="text-xs text-slate-400 mb-4 text-center bg-white py-2 rounded-lg shadow-sm">
+            <i class="fas fa-cloud-upload-alt mr-1 text-indigo-500"></i>任何修改都會自動加密上傳，夥伴重整即可看到。
+        </div>
+        <div id="itinerary-list" class="space-y-8"></div>
+        <div class="fixed bottom-6 right-6 z-40">
+             <button onclick="addNodePrompt()" class="bg-indigo-600 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center border-2 border-white text-xl hover:scale-105 transition-transform">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </main>
+
+    <main id="finance-page" class="tab-content px-4 py-6 space-y-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-slate-50 p-4 border-b flex justify-between items-center cursor-pointer" onclick="document.getElementById('car-details').classList.toggle('hidden')">
+                <div class="flex items-center"><i class="fas fa-car-side text-indigo-600 mr-2"></i><span class="font-bold text-sm">Toyota Rent-A-Car</span></div>
+                <span class="font-black text-indigo-600 text-sm">¥137,679</span>
+            </div>
+            <div id="car-details" class="p-4 text-xs space-y-2 hidden">
+                <p><b>預約號碼:</b> 99991680900 (W1 Class)</p>
+                <p><b>取車:</b> 04/29 14:30 新大阪駅前店</p>
+                <p><b>還車:</b> 05/10 20:00 新大阪駅前店</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
+            <div class="p-3 bg-orange-50 border-b border-orange-100 flex justify-between">
+                <span class="font-bold text-orange-800 text-sm"><i class="fas fa-hotel mr-2"></i>住宿明細</span>
+                <span class="text-xs bg-white text-orange-600 px-2 py-1 rounded">¥431,132</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-orange-100 text-orange-800">
+                        <tr><th class="p-2">日期/飯店</th><th class="p-2 text-right">總價</th></tr>
+                    </thead>
+                    <tbody id="hotel-list-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+            <div class="flex justify-between items-center border-l-4 border-indigo-500 pl-3">
+                <h2 class="font-bold text-sm text-slate-700">個人預估負擔</h2>
+                <button onclick="addFixedExpense()" class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded"><i class="fas fa-plus"></i></button>
+            </div>
+            <div id="fixed-expense-list" class="space-y-2"></div>
+        </div>
+    </main>
+
+    <main id="ledger-page" class="tab-content px-4 py-6 space-y-6">
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+            <h3 class="font-bold text-xs text-slate-400 mb-2 uppercase">成員 (同步儲存)</h3>
+            <div class="flex gap-2 mb-2">
+                <input id="new-member-name" type="text" placeholder="輸入姓名" class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs flex-grow">
+                <button onclick="addMember()" class="bg-indigo-600 text-white px-3 py-1 rounded text-xs">新增</button>
+            </div>
+            <div id="member-tags" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
+            <h3 class="font-bold text-xs text-indigo-500 mb-2">結算建議</h3>
+            <div id="settlement-result" class="text-xs font-medium text-slate-700 space-y-1"></div>
+        </div>
+
+        <div id="expense-container" class="pb-20"></div>
+
+        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full flex justify-center pointer-events-none">
+            <button onclick="openExpenseModal()" class="pointer-events-auto bg-slate-900 text-white px-8 py-3 rounded-full font-bold shadow-2xl flex items-center border-4 border-slate-100 active:scale-95 transition-transform">
+                <i class="fas fa-receipt mr-2"></i>記一筆
+            </button>
+        </div>
+    </main>
+
+    <div id="expense-modal" class="fixed inset-0 bg-slate-900/80 z-[60] hidden flex items-end sm:items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md sm:rounded-2xl rounded-t-2xl overflow-hidden shadow-2xl animate-[slideUp_0.2s_ease-out]">
+            <div class="bg-slate-50 border-b p-3 flex justify-between items-center">
+                <h3 class="font-bold text-slate-700">記帳</h3>
+                <button onclick="document.getElementById('expense-modal').classList.add('hidden')"><i class="fas fa-times text-slate-400"></i></button>
+            </div>
+            <div class="p-5 space-y-3">
+                <div class="grid grid-cols-3 gap-2">
+                    <input type="date" id="input-date" class="col-span-1 bg-slate-50 border rounded p-2 text-sm">
+                    <input type="text" id="input-desc" placeholder="項目" class="col-span-2 bg-slate-50 border rounded p-2 text-sm font-bold">
+                </div>
+                <div class="relative">
+                    <span class="absolute left-3 top-2 text-slate-400">¥</span>
+                    <input type="number" id="input-amount" placeholder="金額" class="w-full bg-slate-50 border rounded p-2 pl-6 text-lg font-black text-indigo-600">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-[10px] text-slate-400">付款人</label><select id="input-payer" class="w-full bg-slate-50 border rounded p-2 text-xs font-bold"></select></div>
+                    <div><label class="text-[10px] text-slate-400">分攤</label><button onclick="toggleAllSplit()" class="w-full bg-slate-100 border rounded p-2 text-xs text-indigo-600">全選/取消</button></div>
+                </div>
+                <div id="input-split-container" class="grid grid-cols-3 gap-2 max-h-24 overflow-y-auto"></div>
+                <button onclick="saveExpense()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold shadow mt-2">儲存並上傳</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // ==========================================
+    // ⚙️ 設定區域 (請替換成你的 JSONBin 資料)
+    // ==========================================
+    const BIN_ID = '6979a2a5ae596e708ffcaa08'; // 例如: 65b3f123...
+    const API_KEY = '$2a$10$riptLWHFddiwJudT1.BkMuiFmirkcbziLr7ytSl6DrydUhB/XPsvG'; // 例如: $2a$10$AbCd...
+    // ==========================================
+
+    let PASSWORD = ''; // 用戶輸入的密碼，用於 AES 加密/解密
+    
+    // 預設資料 (初始化用)
+    const defaultData = {
+        tripData: [
+            { date: "04/29", title: "集合與摩耶山夜景", items: ["新大阪 14:00 集合", "摩耶山夜景", "居酒屋晚餐"], hotelIdx: 0 },
+            { date: "04/30", title: "神戶 ➔ 德島", items: ["明石大橋見學", "北野異人館", "淡路服務區", "德島眉山"], hotelIdx: 1 },
+            { date: "05/01", title: "鳴門與祖谷溫泉", items: ["大鳴門橋 渦之道", "鳴門展望台", "祖谷溫泉旅館"], hotelIdx: 2 },
+            { date: "05/02", title: "大步危與奧祖谷", items: ["大步危小步危", "奧祖谷二重藤蔓橋", "四萬十天文館"], hotelIdx: 3 },
+            { date: "05/03", title: "四萬十 ➔ 松山", items: ["四萬十川遊覽", "龍河洞", "松山城"], hotelIdx: 4 },
+            { date: "05/04", title: "島波海道 ➔ 尾道", items: ["衝今治", "島波海道跨海", "尾道散策"], hotelIdx: 5 },
+            { date: "05/05", title: "尾道 ➔ 岡山", items: ["尾道商店街", "倉敷美觀地區", "岡山城"], hotelIdx: 6 },
+            { date: "05/06", title: "岡山 ➔ 小豆島", items: ["岡山天使之路", "搭船直奔小豆島"], hotelIdx: 7 },
+            { date: "05/07", title: "小豆島全日", items: ["寒霞溪", "重岩", "醬油紀念館", "丸龜城"], hotelIdx: 8 },
+            { date: "05/08", title: "香川秘境巡禮", items: ["金刀比羅宮", "雲邊寺", "父母濱海岸"], hotelIdx: 9 },
+            { date: "05/09", title: "淡路島 ➔ 神戶", items: ["淡路夢舞台", "二次元之森", "明石海峽公園"], hotelIdx: 10 },
+            { date: "05/10", title: "散會", items: ["神戶最後巡禮", "前往機場/新大阪", "回家"], hotelIdx: -1 }
+        ],
+        fixedExpenses: [
+            { title: "宣佑 (含新幹線)", amount: 188676 },
+            { title: "義智", amount: 142783 },
+            { title: "海外人員", amount: 163676 }
+        ],
+        members: [],
+        expenses: []
+    };
+    
+    const hotelDB = [
+        {date:"4/29", name:"ERA 神戶三宮", price:23400, url:"https://travel.rakuten.co.jp/HOTEL/167683/167683.html"},
+        {date:"4/30", name:"東横INN 德島", price:22052, url:"https://travel.rakuten.co.jp/HOTEL/68537/68537.html"},
+        {date:"5/1", name:"祖谷観光旅館", price:40000, url:"https://travel.rakuten.co.jp/HOTEL/142344/142344.html"},
+        {date:"5/2", name:"星羅四万十", price:116600, url:"https://travel.rakuten.co.jp/HOTEL/70733/70733.html"},
+        {date:"5/3", name:"愛絲露松山", price:36120, url:"https://travel.rakuten.co.jp/HOTEL/13883/13883.html"},
+        {date:"5/4", name:"東横INN 福山", price:29700, url:"https://travel.rakuten.co.jp/HOTEL/151477/151477.html"},
+        {date:"5/5", name:"くれたけ岡山", price:22680, url:"https://travel.rakuten.co.jp/HOTEL/158311/158311.html"},
+        {date:"5/6", name:"オリビアン小豆島", price:68500, url:"https://www.jalan.net/yad307396/"},
+        {date:"5/7", name:"APA 丸龜", price:22400, url:"https://travel.rakuten.co.jp/HOTEL/80598/80598.html"},
+        {date:"5/8", name:"アテーナ海月", price:18000, url:"https://travel.rakuten.co.jp/HOTEL/54177/54177.html"},
+        {date:"5/9", name:"東横INN 神戶", price:31680, url:"https://travel.rakuten.co.jp/HOTEL/108407/108407.html"}
+    ];
+
+    let appData = JSON.parse(JSON.stringify(defaultData));
+
+    // --- 1. 雲端與加密核心邏輯 ---
+    async function initCloudSync() {
+        const inputPwd = document.getElementById('secret-password').value;
+        if(!inputPwd) { showLoginMsg("請輸入密碼"); return; }
+        
+        PASSWORD = inputPwd;
+        
+        // UI 切換
+        document.getElementById('login-box').classList.add('hidden');
+        document.getElementById('loading-spinner').classList.remove('hidden');
+
+        try {
+            // 讀取雲端資料
+            const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            
+            if (!response.ok) throw new Error("連線失敗，請檢查網路或 API Key");
+            
+            const result = await response.json();
+            const encryptedStr = result.record.data; // 假設存的是 { data: "加密字串" }
+            
+            if (!encryptedStr) {
+                // 如果雲端是空的 (第一次使用)，直接使用預設資料並上傳
+                console.log("雲端無資料，初始化中...");
+                updateStatus("初始化雲端資料...");
+                await saveToCloud();
+                closeOverlay();
+                renderAll();
+                return;
+            }
+
+            // 解密
+            try {
+                const bytes = CryptoJS.AES.decrypt(encryptedStr, PASSWORD);
+                const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+                appData = decryptedData;
+                updateStatus("同步完成");
+                closeOverlay();
+                renderAll();
+            } catch (e) {
+                // 解密失敗通常代表密碼錯誤
+                throw new Error("密碼錯誤，無法解密資料");
+            }
+
+        } catch (error) {
+            document.getElementById('loading-spinner').classList.add('hidden');
+            document.getElementById('login-box').classList.remove('hidden');
+            showLoginMsg(error.message);
+        }
+    }
+
+    async function saveToCloud() {
+        updateStatus("加密上傳中...");
+        try {
+            // 加密
+            const encryptedStr = CryptoJS.AES.encrypt(JSON.stringify(appData), PASSWORD).toString();
+            
+            // 上傳
+            await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY
+                },
+                body: JSON.stringify({ data: encryptedStr })
+            });
+            updateStatus("已儲存至雲端", true);
+        } catch (error) {
+            updateStatus("上傳失敗!", false, true);
+            alert("上傳失敗，請檢查網路連線");
+        }
+    }
+
+    function showLoginMsg(msg) {
+        document.getElementById('login-msg').innerText = msg;
+    }
+
+    function closeOverlay() {
+        document.getElementById('loading-overlay').style.opacity = '0';
+        setTimeout(() => document.getElementById('loading-overlay').remove(), 500);
+    }
+
+    function updateStatus(msg, success = true, error = false) {
+        const el = document.getElementById('cloud-status');
+        let icon = success ? '<i class="fas fa-check-circle text-green-400"></i>' : '<i class="fas fa-sync fa-spin text-blue-400"></i>';
+        if(error) icon = '<i class="fas fa-exclamation-triangle text-red-400"></i>';
+        el.innerHTML = `${icon} ${msg}`;
+    }
+
+    // --- 2. 應用程式邏輯 (行程拖曳) ---
+    function renderItinerary() {
+        const list = document.getElementById('itinerary-list');
+        list.innerHTML = appData.tripData.map((day, dIdx) => {
+            const hotelInfo = day.hotelIdx >= 0 ? hotelDB[day.hotelIdx] : { name: "溫暖的家", url: "#" };
+            const itemsHtml = day.items.map((item, iIdx) => {
+                let navLink = "";
+                if (iIdx > 0) {
+                    const prevItem = day.items[iIdx-1];
+                    const mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(prevItem)}&destination=${encodeURIComponent(item)}&travelmode=driving`;
+                    navLink = `<div class="ml-8 pl-4 border-l-2 border-dashed border-indigo-200 py-2"><a href="${mapUrl}" target="_blank" class="inline-flex items-center text-[10px] text-indigo-500 bg-indigo-50 px-2 py-1 rounded-full"><i class="fas fa-route mr-1"></i>導航</a></div>`;
+                }
+                return `
+                ${navLink}
+                <div class="draggable-item bg-white p-3 rounded-lg shadow-sm border border-slate-100 flex justify-between items-center z-10" draggable="true" data-didx="${dIdx}" data-iidx="${iIdx}">
+                    <div class="flex items-center gap-3 flex-grow"><i class="fas fa-grip-vertical text-slate-300"></i><span onclick="editNode(${dIdx}, ${iIdx})" class="editable font-medium text-slate-600 flex-grow">${item}</span></div>
+                    <div class="flex space-x-1"><button onclick="deleteNode(${dIdx}, ${iIdx})" class="p-2 text-red-300"><i class="fas fa-times"></i></button></div>
+                </div>`
+            }).join('');
+
+            return `
+            <div class="relative pb-2">
+                <div class="flex items-center mb-1 sticky top-16 bg-slate-100 z-20 py-2">
+                    <span class="bg-slate-800 text-white text-[10px] px-2 py-1 rounded font-bold mr-2">${day.date}</span>
+                    <h2 onclick="editTitle(${dIdx})" class="editable text-lg font-black text-slate-800 flex-grow px-1">${day.title}</h2>
+                </div>
+                <div class="space-y-1 pl-2 border-l-2 border-slate-200 ml-2 relative">
+                    ${itemsHtml}
+                    <div class="bg-orange-50 p-3 rounded-lg flex justify-between items-center text-xs font-bold text-orange-800 border border-orange-100 mt-2 z-10 relative"><span><i class="fas fa-bed mr-2"></i>${hotelInfo.name}</span>${hotelInfo.url!=='#'?`<a href="${hotelInfo.url}" target="_blank" class="bg-white px-3 py-1 rounded shadow-sm">訂房</a>`:''}</div>
+                </div>
+            </div>`
+        }).join('');
+        setupDragAndDrop();
+    }
+
+    // 拖曳相關
+    let dragSrcEl = null;
+    let dragSrcDIdx = null;
+    let dragSrcIIdx = null;
+
+    function setupDragAndDrop() {
+        document.querySelectorAll('.draggable-item').forEach(item => {
+            item.addEventListener('dragstart', function(e) {
+                this.classList.add('dragging'); dragSrcEl=this;
+                dragSrcDIdx=parseInt(this.dataset.didx); dragSrcIIdx=parseInt(this.dataset.iidx);
+            });
+            item.addEventListener('dragover', e => e.preventDefault());
+            item.addEventListener('dragend', function() { this.classList.remove('dragging'); });
+            item.addEventListener('drop', function(e) {
+                e.stopPropagation();
+                const target = e.target.closest('.draggable-item');
+                if (dragSrcEl !== target && target) {
+                    const tDIdx=parseInt(target.dataset.didx); const tIIdx=parseInt(target.dataset.iidx);
+                    if (dragSrcDIdx === tDIdx) {
+                        const items = appData.tripData[dragSrcDIdx].items;
+                        const [moved] = items.splice(dragSrcIIdx, 1);
+                        items.splice(tIIdx, 0, moved);
+                        renderItinerary(); saveToCloud();
+                    } else alert("僅支援同日排序");
+                }
+            });
+        });
+    }
+
+    function editTitle(i){const v=prompt("修改:",appData.tripData[i].title);if(v){appData.tripData[i].title=v;renderItinerary();saveToCloud();}}
+    function editNode(d,i){const v=prompt("修改:",appData.tripData[d].items[i]);if(v){appData.tripData[d].items[i]=v;renderItinerary();saveToCloud();}}
+    function deleteNode(d,i){if(confirm("刪除?")){appData.tripData[d].items.splice(i,1);renderItinerary();saveToCloud();}}
+    function addNodePrompt(){
+        const d=prompt("日期 (例 05/01):"); const i=prompt("景點:");
+        const day=appData.tripData.find(x=>x.date===d);
+        if(day&&i){day.items.push(i);renderItinerary();saveToCloud();}else{alert("找不到日期");}
+    }
+
+    // --- 3. 預算與記帳 ---
+    function renderFixedBudget(){
+        document.getElementById('fixed-expense-list').innerHTML=appData.fixedExpenses.map((item,idx)=>`
+            <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <span onclick="editFixed(${idx},'title')" class="editable text-sm font-bold text-slate-700">${item.title}</span>
+                <div class="flex items-center"><span onclick="editFixed(${idx},'amount')" class="editable font-mono font-bold text-indigo-600 mr-3">¥${item.amount.toLocaleString()}</span><button onclick="deleteFixed(${idx})" class="text-slate-300 text-xs"><i class="fas fa-trash"></i></button></div>
+            </div>`).join('');
+    }
+    function editFixed(i,f){ if(f==='title'){const v=prompt("修改:",appData.fixedExpenses[i].title);if(v)appData.fixedExpenses[i].title=v;}else{const v=parseInt(prompt("金額:"));if(!isNaN(v))appData.fixedExpenses[i].amount=v;} renderFixedBudget();saveToCloud();}
+    function deleteFixed(i){if(confirm("刪除?")){appData.fixedExpenses.splice(i,1);renderFixedBudget();saveToCloud();}}
+    function addFixedExpense(){const t=prompt("項目:");const a=parseInt(prompt("金額:"));if(t&&!isNaN(a)){appData.fixedExpenses.push({title:t,amount:a});renderFixedBudget();saveToCloud();}}
+    
+    function renderHotelTable(){
+        document.getElementById('hotel-list-body').innerHTML=hotelDB.map(h=>`<tr class="border-b border-orange-100"><td class="p-2"><div class="font-bold text-slate-600">${h.date}</div><a href="${h.url}" target="_blank" class="text-indigo-600 text-[10px]">${h.name}</a></td><td class="p-2 text-right font-mono font-bold text-slate-500">¥${h.price.toLocaleString()}</td></tr>`).join('');
+    }
+
+    function addMember(){const n=document.getElementById('new-member-name').value.trim();if(n&&!appData.members.includes(n)){appData.members.push(n);document.getElementById('new-member-name').value='';renderLedgerUI();saveToCloud();}}
+    function renderLedgerUI(){document.getElementById('member-tags').innerHTML=appData.members.map(m=>`<span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-[10px] font-bold">${m}</span>`).join('');calculateSettlement();}
+    
+    function renderLedgerTable(){
+        const con=document.getElementById('expense-container'); if(appData.expenses.length===0){con.innerHTML=`<div class="text-center text-slate-300 py-10">尚無紀錄</div>`;return;}
+        const grp=appData.expenses.reduce((g,i,idx)=>{if(!g[i.date])g[i.date]=[];g[i.date].push({...i,oid:idx});return g;},{});
+        con.innerHTML=Object.keys(grp).sort().map(d=>{
+            let tot=0;
+            const items=grp[d].map(i=>{ tot+=i.amount; return `<div class="flex justify-between items-center p-3 border-b border-slate-100 bg-white last:border-0"><div><div class="font-bold text-sm text-slate-700">${i.desc}</div><div class="text-[10px] text-slate-400">${i.payer} 墊付 (${i.splitWith.length}人)</div></div><div class="text-right"><div class="font-mono font-bold text-indigo-600">¥${i.amount.toLocaleString()}</div><button onclick="delExp(${i.oid})" class="text-slate-200 hover:text-red-400 text-xs"><i class="fas fa-trash"></i></button></div></div>`;}).join('');
+            return `<div class="mb-4 rounded-xl overflow-hidden border border-slate-200 shadow-sm"><div class="bg-slate-50 p-2 flex justify-between items-center text-xs font-bold text-slate-600"><span>${d}</span><span>小計 ¥${tot.toLocaleString()}</span></div>${items}</div>`;
+        }).join('');
+    }
+    
+    function saveExpense(){
+        const dr=document.getElementById('input-date').value; const desc=document.getElementById('input-desc').value; const amt=parseInt(document.getElementById('input-amount').value); const payer=document.getElementById('input-payer').value;
+        const sw=Array.from(document.querySelectorAll('.split-check:checked')).map(c=>c.value);
+        if(!dr||isNaN(amt)||amt<=0||sw.length===0)return alert("請填寫完整");
+        const d=new Date(dr); const ds=`${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+        appData.expenses.push({date:ds,desc,amount:amt,payer,splitWith:sw});
+        document.getElementById('expense-modal').classList.add('hidden'); renderLedgerTable();calculateSettlement();saveToCloud();
+    }
+    function delExp(i){if(confirm("刪除?")){appData.expenses.splice(i,1);renderLedgerTable();calculateSettlement();saveToCloud();}}
+    
+    function calculateSettlement(){
+        if(appData.members.length===0)return;
+        let bal={};appData.members.forEach(m=>bal[m]=0);
+        appData.expenses.forEach(e=>{const s=e.amount/e.splitWith.length;bal[e.payer]+=e.amount;e.splitWith.forEach(p=>{if(bal.hasOwnProperty(p))bal[p]-=s;});});
+        let db=[],cr=[]; for(const[n,v]of Object.entries(bal)){const r=Math.round(v); if(r<-1)db.push({n,v:r});if(r>1)cr.push({n,v:r});}
+        db.sort((a,b)=>a.v-b.v);cr.sort((a,b)=>b.v-a.v);
+        let h='',d=0,c=0;
+        while(d<db.length&&c<cr.length){
+            let a=Math.min(Math.abs(db[d].v),cr[c].v);
+            if(a>0)h+=`<div class="flex justify-between items-center bg-white p-2 rounded border border-slate-200 mb-1"><div class="flex items-center space-x-2"><span class="font-bold text-slate-700 bg-slate-100 px-2 rounded">${db[d].n}</span><i class="fas fa-arrow-right text-slate-300 text-[10px]"></i><span class="font-bold text-indigo-700 bg-indigo-50 px-2 rounded">${cr[c].n}</span></div><span class="font-black text-indigo-600">¥${a.toLocaleString()}</span></div>`;
+            db[d].v+=a;cr[c].v-=a; if(Math.abs(db[d].v)<1)d++;if(cr[c].v<1)c++;
+        }
+        document.getElementById('settlement-result').innerHTML=h||'<div class="text-center text-slate-400">帳目已結清</div>';
+    }
+
+    function openExpenseModal(){
+        if(appData.members.length<2)return alert("請先新增至少兩位成員");
+        document.getElementById('input-date').valueAsDate=new Date(); document.getElementById('input-desc').value='';document.getElementById('input-amount').value='';
+        document.getElementById('input-payer').innerHTML=appData.members.map(m=>`<option value="${m}">${m}</option>`).join('');
+        document.getElementById('input-split-container').innerHTML=appData.members.map(m=>`<label class="flex items-center bg-slate-50 p-2 rounded border cursor-pointer"><input type="checkbox" value="${m}" checked class="accent-indigo-600 split-check mr-2"><span class="text-xs">${m}</span></label>`).join('');
+        document.getElementById('expense-modal').classList.remove('hidden');
+    }
+    function toggleAllSplit(){const c=document.querySelectorAll('.split-check');const a=Array.from(c).every(x=>x.checked);c.forEach(x=>x.checked=!a);}
+    function switchTab(t){document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));document.getElementById(`${t}-page`).classList.add('active');['itinerary','finance','ledger'].forEach(x=>{document.getElementById(`tab-${x}`).className=x===t?"flex-1 py-2 text-sm font-bold rounded bg-white text-slate-900 shadow-sm transition-all":"flex-1 py-2 text-sm font-bold rounded text-slate-400 hover:bg-slate-700 hover:text-white transition-all";});}
+    function renderAll(){renderItinerary();renderFixedBudget();renderHotelTable();renderLedgerUI();renderLedgerTable();}
+
+</script>
+</body>
+</html>
