@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JourneyAPP v22</title>
+    <title>JourneyAPP v23</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
@@ -27,9 +27,9 @@
 
     <div id="loading-overlay">
         <div id="login-box" class="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
-            <div class="mb-4 text-5xl">🚗</div>
+            <div class="mb-4 text-5xl">🚙</div>
             <h2 class="text-2xl font-black mb-2 text-indigo-900">JourneyAPP</h2>
-            <p class="text-xs text-slate-500 mb-6">v22.0 租車連動版</p>
+            <p class="text-xs text-slate-500 mb-6">v23.0 自訂標題版</p>
             <input type="password" id="secret-password" placeholder="輸入密碼..." class="w-full border-2 border-slate-200 rounded-xl p-3 text-lg font-bold mb-4 focus:border-indigo-500 outline-none text-center">
             <button onclick="initCloudSync()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
                 <i class="fas fa-unlock-alt mr-2"></i>解鎖同步
@@ -48,7 +48,7 @@
                 <h1 id="app-main-title" onclick="editAppTitle()" class="text-lg font-black italic tracking-wider" title="點擊修改標題">SHIKOKU 2026</h1>
                 <p id="cloud-status" class="text-slate-400 text-[10px] mt-1 flex items-center gap-1"><i class="fas fa-wifi"></i> 等待連線...</p>
             </div>
-            <div class="text-[10px] font-bold border border-slate-600 px-2 py-1 rounded bg-slate-800">v22.0</div>
+            <div class="text-[10px] font-bold border border-slate-600 px-2 py-1 rounded bg-slate-800">v23.0</div>
         </div>
         <div class="flex space-x-1 bg-slate-800 p-1 rounded-lg">
             <button onclick="switchTab('itinerary')" id="tab-itinerary" class="flex-1 py-2 text-sm font-bold rounded bg-white text-slate-900 shadow-sm transition-all">行程</button>
@@ -84,7 +84,10 @@
         
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-all" onclick="openCarRentalModal()">
             <div class="bg-indigo-50 p-4 border-b border-indigo-100 flex justify-between items-center">
-                <div class="flex items-center"><i class="fas fa-car text-indigo-600 mr-2 text-xl"></i><span class="font-bold text-slate-800">Toyota Rent-A-Car</span></div>
+                <div class="flex items-center">
+                    <i class="fas fa-car text-indigo-600 mr-2 text-xl"></i>
+                    <span id="car-title-display" class="font-bold text-slate-800">Toyota Rent-A-Car</span>
+                </div>
                 <div class="text-right">
                     <span id="car-total-display" class="font-black text-indigo-600 text-lg block">¥0</span>
                     <span class="text-[10px] text-indigo-400"><i class="fas fa-pen mr-1"></i>編輯資訊</span>
@@ -153,6 +156,7 @@
         <div class="bg-white w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl p-5 m-4">
             <h3 class="font-bold text-lg mb-4 text-indigo-800"><i class="fas fa-car mr-2"></i>編輯租車資訊</h3>
             <div class="space-y-3">
+                <div><label class="text-[10px] font-bold text-slate-400">項目名稱</label><input type="text" id="car-input-title" class="w-full bg-slate-50 border rounded-lg p-2 text-sm mt-1" placeholder="Toyota Rent-A-Car"></div>
                 <div><label class="text-[10px] font-bold text-slate-400">總金額 (同步至其餘預算)</label><input type="number" id="car-input-price" class="w-full bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-lg font-black text-indigo-600 mt-1"></div>
                 <div><label class="text-[10px] font-bold text-slate-400">預約號碼</label><input type="text" id="car-input-res" class="w-full bg-slate-50 border rounded-lg p-2 text-sm mt-1"></div>
                 <div class="grid grid-cols-2 gap-2">
@@ -187,7 +191,6 @@
             <div class="space-y-4">
                 <div><label class="text-[10px] font-bold text-slate-400">項目名稱</label><input type="text" id="ob-title" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm font-bold mt-1" placeholder="例如: 租車費"></div>
                 <div><label class="text-[10px] font-bold text-slate-400">總金額 (JPY)</label><input type="number" id="ob-amount" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm font-black text-slate-700 mt-1" placeholder="0"></div>
-                
                 <div>
                     <div class="flex justify-between items-end mb-2">
                         <label class="text-[10px] font-bold text-slate-400">分攤人員</label>
@@ -195,7 +198,6 @@
                     </div>
                     <div id="ob-split-container" class="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-1 bg-slate-50 rounded-lg border border-slate-200"></div>
                 </div>
-
                 <button onclick="saveOtherBudget()" class="w-full bg-slate-700 text-white py-3 rounded-lg font-bold shadow-lg">儲存確認</button>
                 <button onclick="document.getElementById('other-budget-modal').classList.add('hidden')" class="w-full bg-slate-100 text-slate-500 py-3 rounded-lg font-bold mt-2">取消</button>
             </div>
@@ -315,10 +317,8 @@
             if (!appData.otherExpenses) appData.otherExpenses = defaultData.otherExpenses;
             if (!appData.carRentalInfo) appData.carRentalInfo = defaultData.carRentalInfo;
             if (!appData.fixedExpenses) appData.fixedExpenses = [];
-            // 標記預設租車項目
-            const carIdx = appData.otherExpenses.findIndex(o => o.title.includes("Rent-A-Car"));
-            if(carIdx !== -1) appData.otherExpenses[carIdx].isCarRental = true;
-            
+            const carIdx = appData.otherExpenses.findIndex(o => o.isCarRental);
+            if(carIdx !== -1 && !appData.otherExpenses[carIdx].title) appData.otherExpenses[carIdx].title = "Toyota Rent-A-Car"; // Fallback
             updateStatus("同步完成"); closeOverlay(); renderAll();
         } catch (e) { document.getElementById('loading-spinner').classList.add('hidden'); document.getElementById('login-box').classList.remove('hidden'); showLoginMsg("密碼錯誤"); }
     }
@@ -490,39 +490,37 @@
     
     // v22: 租車 Modal 與邏輯
     function openCarRentalModal() {
-        // 載入當前資料
         const info = appData.carRentalInfo;
         const carExpense = appData.otherExpenses.find(o => o.isCarRental);
         
         document.getElementById('car-input-res').value = info.resNo || '';
         document.getElementById('car-input-pickup').value = info.pickup || '';
         document.getElementById('car-input-dropoff').value = info.dropoff || '';
-        
-        // 嘗試抓取對應的 expense 金額
         if (carExpense) {
             document.getElementById('car-input-price').value = carExpense.amount;
+            document.getElementById('car-input-title').value = carExpense.title || "Toyota Rent-A-Car"; // v23
         } else {
             document.getElementById('car-input-price').value = 0;
+            document.getElementById('car-input-title').value = "Toyota Rent-A-Car";
         }
-        
         document.getElementById('car-rental-modal').classList.remove('hidden');
     }
     
     function saveCarRental() {
         const price = parseInt(document.getElementById('car-input-price').value);
+        const title = document.getElementById('car-input-title').value || "Toyota Rent-A-Car"; // v23
         if(isNaN(price)) return alert("金額錯誤");
         
         appData.carRentalInfo.resNo = document.getElementById('car-input-res').value;
         appData.carRentalInfo.pickup = document.getElementById('car-input-pickup').value;
         appData.carRentalInfo.dropoff = document.getElementById('car-input-dropoff').value;
         
-        // 更新或建立 expense item
         const carIdx = appData.otherExpenses.findIndex(o => o.isCarRental);
         if (carIdx !== -1) {
             appData.otherExpenses[carIdx].amount = price;
+            appData.otherExpenses[carIdx].title = title; // v23 update title
         } else {
-            // 如果被誤刪，自動重建
-            appData.otherExpenses.unshift({ title: "Toyota Rent-A-Car", amount: price, splitMembers: [], isCarRental: true });
+            appData.otherExpenses.unshift({ title: title, amount: price, splitMembers: [], isCarRental: true });
         }
         
         document.getElementById('car-rental-modal').classList.add('hidden');
@@ -531,11 +529,12 @@
     
     function renderCarRentalCard() {
         const info = appData.carRentalInfo || {};
-        const carExpense = appData.otherExpenses.find(o => o.isCarRental) || { amount: 0 };
+        const carExpense = appData.otherExpenses.find(o => o.isCarRental) || { amount: 0, title: "Toyota Rent-A-Car" };
         document.getElementById('car-res-no').innerText = info.resNo || '未設定';
         document.getElementById('car-pickup').innerText = info.pickup || '未設定';
         document.getElementById('car-dropoff').innerText = info.dropoff || '未設定';
         document.getElementById('car-total-display').innerText = '¥' + carExpense.amount.toLocaleString();
+        document.getElementById('car-title-display').innerText = carExpense.title; // v23
     }
 
     // 其餘預算
@@ -547,7 +546,6 @@
             const perPerson = splitCount > 0 ? Math.round(item.amount / splitCount) : 0;
             let splitDisplay = splitCount > 0 ? `<span class="text-[10px] bg-slate-100 text-slate-600 px-1 rounded">${splitCount}人分</span>` : `<span class="text-[10px] text-red-400">未設定</span>`;
             
-            // 如果是租車項目，鎖定只能透過上方卡片編輯金額 (避免衝突)
             const clickAction = item.isCarRental ? "alert('請點擊上方的租車卡片進行編輯')" : `openOtherBudgetModal('edit', ${idx})`;
             const deleteAction = item.isCarRental ? "alert('租車項目請勿刪除')" : `deleteOther(${idx})`;
             const itemStyle = item.isCarRental ? "bg-indigo-50/50" : "";
@@ -593,9 +591,9 @@
         appData.otherExpenses.forEach(o => { if(o.splitMembers && o.splitMembers.length > 0) { const perPerson = o.amount / o.splitMembers.length; o.splitMembers.forEach(m => { if(summary[m] !== undefined) summary[m] += perPerson; }); }});
         document.getElementById('budget-summary-list').innerHTML = Object.keys(summary).map(m => `<div class="flex justify-between items-center bg-indigo-50 p-2 rounded border border-indigo-100"><span class="font-bold text-sm text-indigo-900">${m}</span><span class="font-mono font-black text-indigo-600">¥${Math.round(summary[m]).toLocaleString()}</span></div>`).join('');
     }
-    
     function renderFinancePage() { renderMembers(); renderCarRentalCard(); renderHotelTable(); renderOtherExpenseTable(); renderBudgetSummary(); }
-
+    function addFixedExpense() { const t = prompt("項目名稱:"); if(!t) return; const a = parseInt(prompt("金額:")); if(isNaN(a)) return; appData.fixedExpenses.push({title:t, amount:a}); renderFixedBudget(); saveToCloud(); }
+    
     // 記帳邏輯
     let editingExpenseIdx = null; 
     function renderLedgerUI(){ calculateSettlement(); }
