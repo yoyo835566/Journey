@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JourneyAPP v17</title>
+    <title>JourneyAPP v18</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
@@ -26,9 +26,9 @@
 
     <div id="loading-overlay">
         <div id="login-box" class="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
-            <div class="mb-4 text-5xl">🚀</div>
+            <div class="mb-4 text-5xl">🔐</div>
             <h2 class="text-2xl font-black mb-2 text-indigo-900">JourneyAPP</h2>
-            <p class="text-xs text-slate-500 mb-6">v17.0 自動清理版</p>
+            <p class="text-xs text-slate-500 mb-6">v18.0 客製化版</p>
             <input type="password" id="secret-password" placeholder="輸入密碼..." class="w-full border-2 border-slate-200 rounded-xl p-3 text-lg font-bold mb-4 focus:border-indigo-500 outline-none text-center">
             <button onclick="initCloudSync()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
                 <i class="fas fa-unlock-alt mr-2"></i>解鎖同步
@@ -47,7 +47,7 @@
                 <h1 id="app-main-title" onclick="editAppTitle()" class="text-lg font-black italic tracking-wider" title="點擊修改標題">SHIKOKU 2026</h1>
                 <p id="cloud-status" class="text-slate-400 text-[10px] mt-1 flex items-center gap-1"><i class="fas fa-wifi"></i> 等待連線...</p>
             </div>
-            <div class="text-[10px] font-bold border border-slate-600 px-2 py-1 rounded bg-slate-800">v17.0</div>
+            <div class="text-[10px] font-bold border border-slate-600 px-2 py-1 rounded bg-slate-800">v18.0</div>
         </div>
         <div class="flex space-x-1 bg-slate-800 p-1 rounded-lg">
             <button onclick="switchTab('itinerary')" id="tab-itinerary" class="flex-1 py-2 text-sm font-bold rounded bg-white text-slate-900 shadow-sm transition-all">行程</button>
@@ -329,14 +329,10 @@
 
     function editTitle(i){ const v=prompt("修改標題:", appData.tripData[i].title); if(v){ appData.tripData[i].title=v; renderItinerary(); saveToCloud(); }}
     function editNode(d,i){ const v=prompt("修改景點:", appData.tripData[d].items[i]); if(v){ appData.tripData[d].items[i]=v; renderItinerary(); saveToCloud(); }}
-    
-    // v17: 修改刪除邏輯 - 自動移除空日期
     function deleteNode(d,i){ 
         if(confirm("確定刪除此行程點？")){ 
             appData.tripData[d].items.splice(i,1); 
-            if (appData.tripData[d].items.length === 0) {
-                appData.tripData.splice(d, 1); // 如果該天沒行程了，直接刪除整天
-            }
+            if (appData.tripData[d].items.length === 0) appData.tripData.splice(d, 1);
             renderItinerary(); saveToCloud(); 
         }
     }
@@ -431,7 +427,7 @@
         const grp=appData.expenses.reduce((g,i,idx)=>{if(!g[i.date])g[i.date]=[];g[i.date].push({...i,oid:idx});return g;},{});
         con.innerHTML=Object.keys(grp).sort().map(d=>{
             let tot=0;
-            const items=grp[d].map(i=>{ tot+=i.amount; return `<div class="flex justify-between items-center p-3 border-b border-slate-100 bg-white last:border-0"><div><div class="font-bold text-sm text-slate-700">${i.desc}</div><div class="text-[10px] text-slate-400">${i.payer} 墊付 (${i.splitWith.length}人)</div></div><div class="text-right"><div class="font-mono font-bold text-indigo-600">¥${i.amount.toLocaleString()}</div><button onclick="delExp(${i.oid})" class="text-slate-200 hover:text-red-400 text-xs"><i class="fas fa-trash"></i></button></div></div>`;}).join('');
+            const items=grp[d].map(i=>{ tot+=i.amount; return `<div class="flex justify-between items-center p-3 border-b border-slate-100 bg-white last:border-0"><div><div class="font-bold text-sm text-slate-700">${i.desc}</div><div class="text-[10px] text-slate-400">${i.payer} 墊付 (${i.splitWith.join(', ')})</div></div><div class="text-right"><div class="font-mono font-bold text-indigo-600">¥${i.amount.toLocaleString()}</div><button onclick="delExp(${i.oid})" class="text-slate-200 hover:text-red-400 text-xs"><i class="fas fa-trash"></i></button></div></div>`;}).join('');
             return `<div class="mb-4 rounded-xl overflow-hidden border border-slate-200 shadow-sm"><div class="bg-slate-50 p-2 flex justify-between items-center text-xs font-bold text-slate-600"><span>${d}</span><span>小計 ¥${tot.toLocaleString()}</span></div>${items}</div>`;
         }).join('');
     }
