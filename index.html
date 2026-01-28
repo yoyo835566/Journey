@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JourneyAPP v19</title>
+    <title>JourneyAPP v21</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
@@ -20,15 +20,16 @@
         .budget-table th { font-size: 0.7rem; text-transform: uppercase; padding: 8px; }
         .budget-table td { font-size: 0.8rem; padding: 8px; border-bottom: 1px solid #f1f5f9; }
         #app-main-title:hover { opacity: 0.8; cursor: pointer; text-decoration: underline; text-decoration-style: dashed; }
+        .ledger-row:hover { background-color: #f8fafc; cursor: pointer; }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-900 pb-32 overflow-y-scroll">
 
     <div id="loading-overlay">
         <div id="login-box" class="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
-            <div class="mb-4 text-5xl">🏨</div>
+            <div class="mb-4 text-5xl">🚍</div>
             <h2 class="text-2xl font-black mb-2 text-indigo-900">JourneyAPP</h2>
-            <p class="text-xs text-slate-500 mb-6">v19.0 住宿升級版</p>
+            <p class="text-xs text-slate-500 mb-6">v21.0 預算整合版</p>
             <input type="password" id="secret-password" placeholder="輸入密碼..." class="w-full border-2 border-slate-200 rounded-xl p-3 text-lg font-bold mb-4 focus:border-indigo-500 outline-none text-center">
             <button onclick="initCloudSync()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
                 <i class="fas fa-unlock-alt mr-2"></i>解鎖同步
@@ -47,7 +48,7 @@
                 <h1 id="app-main-title" onclick="editAppTitle()" class="text-lg font-black italic tracking-wider" title="點擊修改標題">SHIKOKU 2026</h1>
                 <p id="cloud-status" class="text-slate-400 text-[10px] mt-1 flex items-center gap-1"><i class="fas fa-wifi"></i> 等待連線...</p>
             </div>
-            <div class="text-[10px] font-bold border border-slate-600 px-2 py-1 rounded bg-slate-800">v19.0</div>
+            <div class="text-[10px] font-bold border border-slate-600 px-2 py-1 rounded bg-slate-800">v21.0</div>
         </div>
         <div class="flex space-x-1 bg-slate-800 p-1 rounded-lg">
             <button onclick="switchTab('itinerary')" id="tab-itinerary" class="flex-1 py-2 text-sm font-bold rounded bg-white text-slate-900 shadow-sm transition-all">行程</button>
@@ -104,7 +105,10 @@
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="p-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                 <span class="font-bold text-slate-700 text-sm"><i class="fas fa-bus mr-2"></i>其餘預算</span>
-                <div><span id="other-total" class="text-xs bg-white text-slate-600 px-2 py-1 rounded shadow-sm mr-2 font-bold">¥0</span><button onclick="addOtherExpensePrompt()" class="text-xs bg-slate-600 text-white px-2 py-1 rounded shadow"><i class="fas fa-plus"></i></button></div>
+                <div>
+                    <span id="other-total" class="text-xs bg-white text-slate-600 px-2 py-1 rounded shadow-sm mr-2 font-bold">¥0</span>
+                    <button onclick="openOtherBudgetModal('add')" class="text-xs bg-slate-600 text-white px-2 py-1 rounded shadow hover:bg-slate-700"><i class="fas fa-plus"></i></button>
+                </div>
             </div>
             <div class="overflow-x-auto"><table class="w-full text-left budget-table whitespace-nowrap"><thead class="bg-slate-100 text-slate-600"><tr><th>項目</th><th class="text-center">分攤</th><th class="text-right">每人</th><th class="text-right">總價</th><th></th></tr></thead><tbody id="other-expense-body"></tbody></table></div>
         </div>
@@ -125,8 +129,9 @@
             <div id="settlement-result" class="text-xs font-medium text-slate-700 space-y-1"></div>
         </div>
         <div id="expense-container" class="pb-20"></div>
+        
         <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full flex justify-center pointer-events-none">
-            <button onclick="openExpenseModal()" class="pointer-events-auto bg-slate-900 text-white px-8 py-3 rounded-full font-bold shadow-2xl flex items-center border-4 border-slate-100 transform active:scale-95 transition-all">
+            <button onclick="openExpenseModal('add')" class="pointer-events-auto bg-slate-900 text-white px-8 py-3 rounded-full font-bold shadow-2xl flex items-center border-4 border-slate-100 transform active:scale-95 transition-all">
                 <i class="fas fa-receipt mr-2"></i>記一筆
             </button>
         </div>
@@ -137,26 +142,34 @@
             <h3 class="font-bold text-lg mb-4 text-orange-700">新增住宿資訊</h3>
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400">入住日期</label>
-                        <input type="date" id="hotel-input-date" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm font-bold text-slate-700 mt-1">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400">總金額 (JPY)</label>
-                        <input type="number" id="hotel-input-price" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm font-black text-orange-600 mt-1" placeholder="0">
-                    </div>
+                    <div><label class="text-[10px] font-bold text-slate-400">入住日期</label><input type="date" id="hotel-input-date" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm font-bold text-slate-700 mt-1"></div>
+                    <div><label class="text-[10px] font-bold text-slate-400">總金額 (JPY)</label><input type="number" id="hotel-input-price" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm font-black text-orange-600 mt-1" placeholder="0"></div>
                 </div>
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400">飯店名稱</label>
-                    <input type="text" id="hotel-input-name" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm font-bold mt-1" placeholder="例如: 東橫INN">
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400">訂房連結 (URL)</label>
-                    <input type="url" id="hotel-input-url" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm text-blue-600 mt-1" placeholder="https://...">
-                </div>
-                
+                <div><label class="text-[10px] font-bold text-slate-400">飯店名稱</label><input type="text" id="hotel-input-name" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm font-bold mt-1" placeholder="例如: 東橫INN"></div>
+                <div><label class="text-[10px] font-bold text-slate-400">訂房連結 (URL)</label><input type="url" id="hotel-input-url" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm text-blue-600 mt-1" placeholder="https://..."></div>
                 <button onclick="saveHotel()" class="w-full bg-orange-600 text-white py-3 rounded-lg font-bold shadow-lg">新增住宿</button>
                 <button onclick="document.getElementById('hotel-modal').classList.add('hidden')" class="w-full bg-slate-100 text-slate-500 py-3 rounded-lg font-bold mt-2">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="other-budget-modal" class="fixed inset-0 bg-slate-900/80 z-[80] hidden flex items-end sm:items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md sm:rounded-2xl rounded-t-2xl overflow-hidden shadow-2xl p-5">
+            <h3 id="other-budget-title" class="font-bold text-lg mb-4 text-slate-700">新增預算項目</h3>
+            <div class="space-y-4">
+                <div><label class="text-[10px] font-bold text-slate-400">項目名稱</label><input type="text" id="ob-title" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm font-bold mt-1" placeholder="例如: 租車費"></div>
+                <div><label class="text-[10px] font-bold text-slate-400">總金額 (JPY)</label><input type="number" id="ob-amount" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm font-black text-slate-700 mt-1" placeholder="0"></div>
+                
+                <div>
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-[10px] font-bold text-slate-400">分攤人員</label>
+                        <button onclick="toggleOtherBudgetSplit()" class="text-[10px] text-indigo-500 font-bold">全選/取消</button>
+                    </div>
+                    <div id="ob-split-container" class="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-1 bg-slate-50 rounded-lg border border-slate-200"></div>
+                </div>
+
+                <button onclick="saveOtherBudget()" class="w-full bg-slate-700 text-white py-3 rounded-lg font-bold shadow-lg">儲存確認</button>
+                <button onclick="document.getElementById('other-budget-modal').classList.add('hidden')" class="w-full bg-slate-100 text-slate-500 py-3 rounded-lg font-bold mt-2">取消</button>
             </div>
         </div>
     </div>
@@ -165,14 +178,8 @@
         <div class="bg-white w-full max-w-sm sm:rounded-2xl rounded-t-2xl overflow-hidden shadow-2xl p-5">
             <h3 id="itinerary-modal-title" class="font-bold text-lg mb-4 text-slate-700">新增行程節點</h3>
             <div class="space-y-4">
-                <div>
-                    <label class="text-xs font-bold text-slate-400">選擇日期</label>
-                    <input type="date" id="iti-date" class="w-full bg-slate-50 border rounded-lg p-3 text-slate-700 font-bold mt-1">
-                </div>
-                <div id="iti-name-group">
-                    <label class="text-xs font-bold text-slate-400">景點名稱</label>
-                    <input type="text" id="iti-name" class="w-full bg-slate-50 border rounded-lg p-3 mt-1" placeholder="例如: 金刀比羅宮">
-                </div>
+                <div><label class="text-xs font-bold text-slate-400">選擇日期</label><input type="date" id="iti-date" class="w-full bg-slate-50 border rounded-lg p-3 text-slate-700 font-bold mt-1"></div>
+                <div id="iti-name-group"><label class="text-xs font-bold text-slate-400">景點名稱</label><input type="text" id="iti-name" class="w-full bg-slate-50 border rounded-lg p-3 mt-1" placeholder="例如: 金刀比羅宮"></div>
                 <button onclick="saveItineraryNode()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold shadow-lg">儲存確認</button>
                 <button onclick="document.getElementById('itinerary-modal').classList.add('hidden')" class="w-full bg-slate-100 text-slate-500 py-3 rounded-lg font-bold mt-2">取消</button>
             </div>
@@ -192,7 +199,10 @@
 
     <div id="expense-modal" class="fixed inset-0 bg-slate-900/80 z-[60] hidden flex items-end sm:items-center justify-center backdrop-blur-sm">
         <div class="bg-white w-full max-w-md sm:rounded-2xl rounded-t-2xl overflow-hidden shadow-2xl p-5">
-            <h3 class="font-bold text-slate-700 mb-4">新增消費</h3>
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="expense-modal-title" class="font-bold text-slate-700">新增消費</h3>
+                <button id="expense-delete-btn" onclick="deleteExpenseFromModal()" class="text-red-400 text-xs font-bold hidden"><i class="fas fa-trash mr-1"></i>刪除此筆</button>
+            </div>
             <div class="space-y-3">
                 <div class="grid grid-cols-3 gap-2">
                     <input type="date" id="input-date" class="col-span-1 bg-slate-50 border rounded p-2 text-sm">
@@ -423,7 +433,7 @@
         document.getElementById('hotel-total').innerText = '¥' + total.toLocaleString();
     }
     
-    // v19: 新增住宿 Modal 邏輯
+    // 住宿 Modal
     function openHotelModal() {
         document.getElementById('hotel-input-date').valueAsDate = new Date();
         document.getElementById('hotel-input-name').value = '';
@@ -431,38 +441,78 @@
         document.getElementById('hotel-input-url').value = '';
         document.getElementById('hotel-modal').classList.remove('hidden');
     }
-    
     function saveHotel() {
-        const dRaw = document.getElementById('hotel-input-date').value;
-        const name = document.getElementById('hotel-input-name').value;
-        const price = parseInt(document.getElementById('hotel-input-price').value);
-        const url = document.getElementById('hotel-input-url').value || '#';
-        
+        const dRaw = document.getElementById('hotel-input-date').value; const name = document.getElementById('hotel-input-name').value; const price = parseInt(document.getElementById('hotel-input-price').value); const url = document.getElementById('hotel-input-url').value || '#';
         if(!dRaw || !name || isNaN(price)) return alert("請填寫完整資訊");
-        
         const displayDate = formatDateDisplay(dRaw);
-        appData.hotels.push({
-            date: displayDate,
-            name: name,
-            price: price,
-            url: url,
-            splitMembers: []
-        });
-        
-        // 排序住宿 (選擇性功能，讓日期近的排前面)
-        appData.hotels.sort((a, b) => {
-            const da = new Date(getYearForInput(a.date));
-            const db = new Date(getYearForInput(b.date));
-            return da - db;
-        });
-
-        renderFinancePage(); saveToCloud();
-        document.getElementById('hotel-modal').classList.add('hidden');
+        appData.hotels.push({ date: displayDate, name: name, price: price, url: url, splitMembers: [] });
+        appData.hotels.sort((a, b) => { const da = new Date(getYearForInput(a.date)); const db = new Date(getYearForInput(b.date)); return da - db; });
+        renderFinancePage(); saveToCloud(); document.getElementById('hotel-modal').classList.add('hidden');
     }
 
     function deleteHotel(idx) { if(confirm("刪除?")) { appData.hotels.splice(idx, 1); renderFinancePage(); saveToCloud(); }}
     function editHotel(idx, field) { if(field === 'date') { const v = prompt("修改日期:", appData.hotels[idx].date); if(v) appData.hotels[idx].date = v; } if(field === 'price') { const v = parseInt(prompt("修改總金額:", appData.hotels[idx].price)); if(!isNaN(v)) appData.hotels[idx].price = v; } renderFinancePage(); saveToCloud(); }
     
+    // 其餘預算 (v21: 整合 Modal)
+    let editingOtherBudgetIdx = null; 
+    function openOtherBudgetModal(mode, idx = null) {
+        const modal = document.getElementById('other-budget-modal');
+        const titleEl = document.getElementById('other-budget-title');
+        const nameInput = document.getElementById('ob-title');
+        const amtInput = document.getElementById('ob-amount');
+        const splitContainer = document.getElementById('ob-split-container');
+        
+        // 渲染分攤勾選框
+        let currentSelected = [];
+        if (mode === 'edit') currentSelected = appData.otherExpenses[idx].splitMembers || [];
+        else if (mode === 'add') currentSelected = appData.members; // 預設全選
+
+        splitContainer.innerHTML = appData.members.map(m => `
+            <label class="flex items-center space-x-2 bg-slate-50 p-2 rounded cursor-pointer border border-slate-200">
+                <input type="checkbox" value="${m}" ${currentSelected.includes(m) ? 'checked' : ''} class="ob-split-cb accent-indigo-600">
+                <span class="text-xs font-bold text-slate-700">${m}</span>
+            </label>`).join('');
+
+        if (mode === 'add') {
+            editingOtherBudgetIdx = null;
+            titleEl.innerText = "新增預算項目";
+            nameInput.value = '';
+            amtInput.value = '';
+        } else if (mode === 'edit') {
+            editingOtherBudgetIdx = idx;
+            titleEl.innerText = "修改預算項目";
+            nameInput.value = appData.otherExpenses[idx].title;
+            amtInput.value = appData.otherExpenses[idx].amount;
+        }
+        modal.classList.remove('hidden');
+    }
+
+    function toggleOtherBudgetSplit() {
+        const checks = document.querySelectorAll('.ob-split-cb');
+        const allChecked = Array.from(checks).every(x => x.checked);
+        checks.forEach(x => x.checked = !allChecked);
+    }
+
+    function saveOtherBudget() {
+        const t = document.getElementById('ob-title').value;
+        const a = parseInt(document.getElementById('ob-amount').value);
+        if(!t || isNaN(a)) return alert("請填寫完整");
+        
+        const selectedMembers = Array.from(document.querySelectorAll('.ob-split-cb:checked')).map(cb => cb.value);
+
+        if (editingOtherBudgetIdx !== null) {
+            appData.otherExpenses[editingOtherBudgetIdx].title = t;
+            appData.otherExpenses[editingOtherBudgetIdx].amount = a;
+            appData.otherExpenses[editingOtherBudgetIdx].splitMembers = selectedMembers;
+        } else {
+            appData.otherExpenses.push({title:t, amount:a, splitMembers: selectedMembers});
+        }
+        
+        document.getElementById('other-budget-modal').classList.add('hidden');
+        renderFinancePage();
+        saveToCloud();
+    }
+
     function renderOtherExpenseTable() {
         let total = 0;
         document.getElementById('other-expense-body').innerHTML = appData.otherExpenses.map((item, idx) => {
@@ -470,13 +520,27 @@
             const splitCount = (item.splitMembers && item.splitMembers.length > 0) ? item.splitMembers.length : 0;
             const perPerson = splitCount > 0 ? Math.round(item.amount / splitCount) : 0;
             let splitDisplay = splitCount > 0 ? `<span class="text-[10px] bg-slate-100 text-slate-600 px-1 rounded">${splitCount}人分</span>` : `<span class="text-[10px] text-red-400">未設定</span>`;
-            return `<tr class="border-b border-slate-100 group"><td class="p-2"><div class="font-bold text-slate-700 text-xs editable" onclick="editOther(${idx}, 'title')">${item.title}</div></td><td class="p-2 text-center editable" onclick="openMemberSelectModal('other', ${idx})">${splitDisplay}<div class="text-[8px] text-slate-400 truncate max-w-[60px]">${item.splitMembers ? item.splitMembers.join(',') : ''}</div></td><td class="p-2 text-right font-mono text-slate-500 text-[10px]">¥${perPerson.toLocaleString()}</td><td class="p-2 text-right font-mono font-bold text-slate-700 editable" onclick="editOther(${idx}, 'amount')">¥${item.amount.toLocaleString()}</td><td class="p-2 text-right"><button onclick="deleteOther(${idx})" class="text-slate-300 hover:text-red-500 text-xs"><i class="fas fa-trash"></i></button></td></tr>`;
+            
+            // v21: 點擊整列開啟編輯
+            return `
+            <tr class="border-b border-slate-100 group cursor-pointer hover:bg-slate-50" onclick="openOtherBudgetModal('edit', ${idx})">
+                <td class="p-2"><div class="font-bold text-slate-700 text-xs">${item.title}</div></td>
+                <td class="p-2 text-center">
+                    ${splitDisplay}
+                    <div class="text-[8px] text-slate-400 truncate max-w-[60px]">${item.splitMembers ? item.splitMembers.join(',') : ''}</div>
+                </td>
+                <td class="p-2 text-right font-mono text-slate-500 text-[10px]">¥${perPerson.toLocaleString()}</td>
+                <td class="p-2 text-right font-mono font-bold text-slate-700">¥${item.amount.toLocaleString()}</td>
+                <td class="p-2 text-right">
+                    <button onclick="event.stopPropagation(); deleteOther(${idx})" class="text-slate-300 hover:text-red-500 text-xs"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
         }).join('');
         document.getElementById('other-total').innerText = '¥' + total.toLocaleString();
     }
-    function addOtherExpensePrompt() { const t = prompt("項目名稱:"); if(!t) return; const a = parseInt(prompt("金額:")); if(isNaN(a)) return; appData.otherExpenses.push({title:t, amount:a, splitMembers: []}); renderFinancePage(); saveToCloud(); }
+    
     function deleteOther(idx) { if(confirm("刪除?")) { appData.otherExpenses.splice(idx, 1); renderFinancePage(); saveToCloud(); }}
-    function editOther(idx, field) { if(field === 'title') { const v = prompt("修改項目:", appData.otherExpenses[idx].title); if(v) appData.otherExpenses[idx].title = v; } if(field === 'amount') { const v = parseInt(prompt("修改金額:", appData.otherExpenses[idx].amount)); if(!isNaN(v)) appData.otherExpenses[idx].amount = v; } renderFinancePage(); saveToCloud(); }
+    
     function renderBudgetSummary() {
         if(appData.members.length === 0) return;
         let summary = {}; appData.members.forEach(m => summary[m] = 0);
@@ -486,30 +550,75 @@
     }
     function renderFinancePage() { renderMembers(); renderHotelTable(); renderOtherExpenseTable(); renderBudgetSummary(); }
     function addFixedExpense() { const t = prompt("項目名稱:"); if(!t) return; const a = parseInt(prompt("金額:")); if(isNaN(a)) return; appData.fixedExpenses.push({title:t, amount:a}); renderFixedBudget(); saveToCloud(); }
-    function renderFixedBudget(){ document.getElementById('fixed-expense-list').innerHTML=appData.fixedExpenses.map((item,idx)=>`<div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100"><span onclick="editFixed(${idx},'title')" class="editable text-sm font-bold text-slate-700">${item.title}</span><div class="flex items-center"><span onclick="editFixed(${idx},'amount')" class="editable font-mono font-bold text-indigo-600 mr-3">¥${item.amount.toLocaleString()}</span><button onclick="deleteFixed(${idx})" class="text-slate-300 text-xs"><i class="fas fa-trash"></i></button></div></div>`).join(''); }
-    function editFixed(i,f){ if(f==='title'){const v=prompt("修改:",appData.fixedExpenses[i].title);if(v)appData.fixedExpenses[i].title=v;}else{const v=parseInt(prompt("金額:"));if(!isNaN(v))appData.fixedExpenses[i].amount=v;} renderFixedBudget();saveToCloud();}
-    function deleteFixed(i){if(confirm("刪除?")){appData.fixedExpenses.splice(i,1);renderFixedBudget();saveToCloud();}}
-
+    
     // 記帳邏輯
+    let editingExpenseIdx = null; 
+
     function renderLedgerUI(){ calculateSettlement(); }
     function renderLedgerTable(){
         const con=document.getElementById('expense-container'); if(appData.expenses.length===0){con.innerHTML=`<div class="text-center text-slate-300 py-10">尚無紀錄</div>`;return;}
-        const grp=appData.expenses.reduce((g,i,idx)=>{if(!g[i.date])g[i.date]=[];g[i.date].push({...i,oid:idx});return g;},{});
+        const grp=appData.expenses.reduce((g,i,idx)=>{if(!g[i.date])g[i.date]=[];g[i.date].push({...i,oid:idx});return g;},{}); // oid 是在原陣列的索引
         con.innerHTML=Object.keys(grp).sort().map(d=>{
             let tot=0;
-            const items=grp[d].map(i=>{ tot+=i.amount; return `<div class="flex justify-between items-center p-3 border-b border-slate-100 bg-white last:border-0"><div><div class="font-bold text-sm text-slate-700">${i.desc}</div><div class="text-[10px] text-slate-400">${i.payer} 墊付 <span class="text-indigo-400">(${i.splitWith.join(', ')})</span></div></div><div class="text-right"><div class="font-mono font-bold text-indigo-600">¥${i.amount.toLocaleString()}</div><button onclick="delExp(${i.oid})" class="text-slate-200 hover:text-red-400 text-xs"><i class="fas fa-trash"></i></button></div></div>`;}).join('');
+            const items=grp[d].map(i=>{ tot+=i.amount; return `<div onclick="openExpenseModal('edit', ${i.oid})" class="ledger-row flex justify-between items-center p-3 border-b border-slate-100 bg-white last:border-0"><div><div class="font-bold text-sm text-slate-700">${i.desc}</div><div class="text-[10px] text-slate-400">${i.payer} 墊付 <span class="text-indigo-400">(${i.splitWith.join(', ')})</span></div></div><div class="text-right"><div class="font-mono font-bold text-indigo-600">¥${i.amount.toLocaleString()}</div><div class="text-[10px] text-slate-300"><i class="fas fa-pen"></i></div></div></div>`;}).join('');
             return `<div class="mb-4 rounded-xl overflow-hidden border border-slate-200 shadow-sm"><div class="bg-slate-50 p-2 flex justify-between items-center text-xs font-bold text-slate-600"><span>${d}</span><span>小計 ¥${tot.toLocaleString()}</span></div>${items}</div>`;
         }).join('');
     }
+    
+    function openExpenseModal(mode, idx = null){
+        if(appData.members.length<2)return alert("請先在【預算】頁面新增人員");
+        const modal = document.getElementById('expense-modal');
+        const delBtn = document.getElementById('expense-delete-btn');
+        
+        document.getElementById('input-payer').innerHTML=appData.members.map(m=>`<option value="${m}">${m}</option>`).join('');
+        document.getElementById('input-split-container').innerHTML=appData.members.map(m=>`<label class="flex items-center bg-slate-50 p-2 rounded border cursor-pointer"><input type="checkbox" value="${m}" checked class="accent-indigo-600 split-check mr-2"><span class="text-xs">${m}</span></label>`).join('');
+
+        if (mode === 'add') {
+            editingExpenseIdx = null;
+            document.getElementById('expense-modal-title').innerText = "新增消費";
+            delBtn.classList.add('hidden');
+            document.getElementById('input-date').valueAsDate=new Date(); 
+            document.getElementById('input-desc').value='';
+            document.getElementById('input-amount').value='';
+        } else if (mode === 'edit') {
+            editingExpenseIdx = idx;
+            document.getElementById('expense-modal-title').innerText = "編輯消費";
+            delBtn.classList.remove('hidden');
+            const exp = appData.expenses[idx];
+            document.getElementById('input-date').value = getYearForInput(exp.date);
+            document.getElementById('input-desc').value = exp.desc;
+            document.getElementById('input-amount').value = exp.amount;
+            document.getElementById('input-payer').value = exp.payer;
+            const checkboxes = document.querySelectorAll('.split-check');
+            checkboxes.forEach(cb => { cb.checked = exp.splitWith.includes(cb.value); });
+        }
+        modal.classList.remove('hidden');
+    }
+
     function saveExpense(){
         const dr=document.getElementById('input-date').value; const desc=document.getElementById('input-desc').value; const amt=parseInt(document.getElementById('input-amount').value); const payer=document.getElementById('input-payer').value;
         const sw=Array.from(document.querySelectorAll('.split-check:checked')).map(c=>c.value);
         if(!dr||isNaN(amt)||amt<=0||sw.length===0)return alert("請填寫完整");
+        
         const d=new Date(dr); const ds=`${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
-        appData.expenses.push({date:ds,desc,amount:amt,payer,splitWith:sw});
+        const newExpense = {date:ds,desc,amount:amt,payer,splitWith:sw};
+
+        if (editingExpenseIdx !== null) { appData.expenses[editingExpenseIdx] = newExpense; } 
+        else { appData.expenses.push(newExpense); }
+        
         document.getElementById('expense-modal').classList.add('hidden'); renderLedgerTable();calculateSettlement();saveToCloud();
     }
+    
+    function deleteExpenseFromModal() {
+        if(editingExpenseIdx !== null && confirm("確定刪除此筆消費？")) {
+            appData.expenses.splice(editingExpenseIdx, 1);
+            document.getElementById('expense-modal').classList.add('hidden');
+            renderLedgerTable(); calculateSettlement(); saveToCloud();
+        }
+    }
+
     function delExp(i){if(confirm("刪除?")){appData.expenses.splice(i,1);renderLedgerTable();calculateSettlement();saveToCloud();}}
+    
     function calculateSettlement(){
         if(appData.members.length===0)return;
         let bal={};appData.members.forEach(m=>bal[m]=0);
@@ -523,13 +632,6 @@
             db[d].v+=a;cr[c].v-=a; if(Math.abs(db[d].v)<1)d++;if(cr[c].v<1)c++;
         }
         document.getElementById('settlement-result').innerHTML=h||'<div class="text-center text-slate-400">帳目已結清</div>';
-    }
-    function openExpenseModal(){
-        if(appData.members.length<2)return alert("請先在【預算】頁面新增人員");
-        document.getElementById('input-date').valueAsDate=new Date(); document.getElementById('input-desc').value='';document.getElementById('input-amount').value='';
-        document.getElementById('input-payer').innerHTML=appData.members.map(m=>`<option value="${m}">${m}</option>`).join('');
-        document.getElementById('input-split-container').innerHTML=appData.members.map(m=>`<label class="flex items-center bg-slate-50 p-2 rounded border cursor-pointer"><input type="checkbox" value="${m}" checked class="accent-indigo-600 split-check mr-2"><span class="text-xs">${m}</span></label>`).join('');
-        document.getElementById('expense-modal').classList.remove('hidden');
     }
     function toggleAllSplit(){const c=document.querySelectorAll('.split-check');const a=Array.from(c).every(x=>x.checked);c.forEach(x=>x.checked=!a);}
     function switchTab(t){document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));document.getElementById(`${t}-page`).classList.add('active');['itinerary','finance','ledger'].forEach(x=>{document.getElementById(`tab-${x}`).className=x===t?"flex-1 py-2 text-sm font-bold rounded bg-white text-slate-900 shadow-sm transition-all":"flex-1 py-2 text-sm font-bold rounded text-slate-400 hover:bg-slate-700 hover:text-white transition-all";});}
